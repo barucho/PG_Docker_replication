@@ -111,16 +111,16 @@ if [ "$1" = 'postgres' ]; then
 		done
 
 		## add by baruch@brillix.co.il
-		# add replication user
-		gosu postgres psql -c "CREATE USER replicator REPLICATION LOGIN ENCRYPTED PASSWORD 'thepassword';"
-		echo "*:*:*:replicator:thepassword" > /.pgpass
-		echo "172.17.0.2:5432:repliction:replicator:thepassword" >> /.pgpass
+		# add replication user to all postgres master and slave 
+        file_env 'PASSWORD'
+		file_env 'MASTER'
+		gosu postgres psql -c "CREATE USER replicator REPLICATION LOGIN ENCRYPTED PASSWORD '${PASSWORD}';"
+		echo "*:*:*:replicator:${PASSWORD}" > /.pgpass
+		echo "${MASTER}:5432:repliction:replicator:${PASSWORD}" >> /.pgpass
 		gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
-
 		# add by baruch@brillix.co.il to support master slave
 		#chack if the server is SLAVE
 		# !notice the value of MASTER id the master IP !
-		file_env 'MASTER'
 		if [ "$MASTER" ];then
 			cat >&2 <<-'EOWARN'
 				****************************************************
@@ -131,13 +131,13 @@ if [ "$1" = 'postgres' ]; then
       gosu postgres bash -c 'cp ${PGDATA}/*.conf /tmp/'
 			gosu postgres bash -c 'rm -r ${PGDATA}/*'
 			# recover from master #TODO FIX PASSWORD
-			gosu postgres bash -c 'export PGPASSWORD="thepassword" ; pg_basebackup  -h ${MASTER} -p 5432  -D ${PGDATA} -U replicator -v -P'
+			gosu postgres bash -c 'export PGPASSWORD=${PASSWORD} ; pg_basebackup  -h ${MASTER} -p 5432  -D ${PGDATA} -U replicator -v -P'
 			# replace config files
 			gosu postgres bash -c 'cp /tmp/*.conf ${PGDATA}/'
 			##recovery file creation #TODO FIX PASSWORD
 			echo '' > ${PGDATA}/recovery.conf
 			echo "standby_mode = 'on' " >> ${PGDATA}/recovery.conf
-			echo "primary_conninfo = 'host=${MASTER} port=5432 user=replicator password=thepassword sslmode=require '" >> ${PGDATA}/recovery.conf
+			echo "primary_conninfo = 'host=${MASTER} port=5432 user=replicator password=${PASSWORD} sslmode=require '" >> ${PGDATA}/recovery.conf
 			echo "trigger_file = '/tmp/postgresql.trigger' " >>  ${PGDATA}/recovery.conf
 		fi
 

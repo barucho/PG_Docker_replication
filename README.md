@@ -1,8 +1,4 @@
 # PG_Docker_replication
-TODO: 
-1. password parameter for now the password is "thepassword"
-2.  failover script 
-
 
 to build :
 docker build -t postrep .

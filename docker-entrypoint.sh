@@ -119,9 +119,9 @@ if [ "$1" = 'postgres' ]; then
 
 		# add by baruch@brillix.co.il to support master slave
 		#chack if the server is SLAVE
-		# !notice the value of slave id the master IP !
-		file_env 'SLAVE'
-		if [ "$SLAVE" ];then
+		# !notice the value of MASTER id the master IP !
+		file_env 'MASTER'
+		if [ "$MASTER" ];then
 			cat >&2 <<-'EOWARN'
 				****************************************************
 				Configuring postgres as slave
@@ -131,13 +131,13 @@ if [ "$1" = 'postgres' ]; then
       gosu postgres bash -c 'cp ${PGDATA}/*.conf /tmp/'
 			gosu postgres bash -c 'rm -r ${PGDATA}/*'
 			# recover from master #TODO FIX PASSWORD
-			gosu postgres bash -c 'export PGPASSWORD="thepassword" ; pg_basebackup  -h ${SLAVE} -p 5432  -D ${PGDATA} -U replicator -v -P'
+			gosu postgres bash -c 'export PGPASSWORD="thepassword" ; pg_basebackup  -h ${MASTER} -p 5432  -D ${PGDATA} -U replicator -v -P'
 			# replace config files
 			gosu postgres bash -c 'cp /tmp/*.conf ${PGDATA}/'
 			##recovery file creation #TODO FIX PASSWORD
 			echo '' > ${PGDATA}/recovery.conf
 			echo "standby_mode = 'on' " >> ${PGDATA}/recovery.conf
-			echo "primary_conninfo = 'host=${SLAVE} port=5432 user=replicator password=thepassword sslmode=require '" >> ${PGDATA}/recovery.conf
+			echo "primary_conninfo = 'host=${MASTER} port=5432 user=replicator password=thepassword sslmode=require '" >> ${PGDATA}/recovery.conf
 			echo "trigger_file = '/tmp/postgresql.trigger' " >>  ${PGDATA}/recovery.conf
 		fi
 

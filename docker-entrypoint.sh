@@ -119,7 +119,11 @@ if [ "$1" = 'postgres' ]; then
 		echo "${MASTER}:5432:repliction:replicator:${PASSWORD}" >> /.pgpass
 		gosu postgres pg_ctl -D "$PGDATA" -m fast -w stop
 		# add by baruch@brillix.co.il to support master slave
-		#chack if the server is SLAVE
+		#chack if the server is SLAVE 
+		# 1. recover from master 
+		# 2. replace config file 
+		# 3. create recover file 
+		# 4. start pg
 		# !notice the value of MASTER id the master IP !
 		if [ "$MASTER" ];then
 			cat >&2 <<-'EOWARN'
@@ -130,12 +134,13 @@ if [ "$1" = 'postgres' ]; then
 			##clear datadir
       gosu postgres bash -c 'cp ${PGDATA}/*.conf /tmp/'
 			gosu postgres bash -c 'rm -r ${PGDATA}/*'
-			# recover from master #TODO FIX PASSWORD
+			# recover from master 
 			gosu postgres bash -c 'export PGPASSWORD=${PASSWORD} ; pg_basebackup  -h ${MASTER} -p 5432  -D ${PGDATA} -U replicator -v -P'
 			# replace config files
 			gosu postgres bash -c 'cp /tmp/*.conf ${PGDATA}/'
-			##recovery file creation #TODO FIX PASSWORD
+			##recovery file creation 
 			echo '' > ${PGDATA}/recovery.conf
+			chown postgres.postgres ${PGDATA}/recovery.conf
 			echo "standby_mode = 'on' " >> ${PGDATA}/recovery.conf
 			echo "primary_conninfo = 'host=${MASTER} port=5432 user=replicator password=${PASSWORD} sslmode=require '" >> ${PGDATA}/recovery.conf
 			echo "trigger_file = '/tmp/postgresql.trigger' " >>  ${PGDATA}/recovery.conf
